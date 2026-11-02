@@ -1,0 +1,10 @@
+# Reward spec agent configuration.
+# No reasoning_effort key: this is a single-pass structured-output agent.
+# Add openai.reasoning_effort via experiment config override if extended thinking is needed.
+
+validation:
+  strict: false  # warn + drop invalid reward terms instead of failing the run
+
+openai:
+  model: "${provider.model}"
+  service_tier: ${openai.service_tier}

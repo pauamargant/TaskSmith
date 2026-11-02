@@ -1,0 +1,173 @@
+# Manipuland agent configuration — agent-specific overrides.
+# Shared defaults (session_memory, openai, api_timeout, etc.) come from _base_agent.yaml.
+
+defaults:
+  - _base_agent
+
+rendering:
+  layout: "top_plus_sides"
+  top_view_width: 1024
+  top_view_height: 1024
+  side_view_count: 4
+  blender_server_port_range: [8000, 8250]
+  annotations:
+    enable_set_of_mark_labels: true
+    enable_bounding_boxes: true
+    enable_direction_arrows: true
+    enable_partial_walls: true
+    enable_support_surface_debug: false
+    enable_convex_hull_debug: false
+
+asset_manager:
+  side_view_elevation_degrees: 20.0
+  mesh_relative_dimension_threshold: 0.02
+  router:
+    strategies:
+      articulated:
+        enabled: true
+      # Thin covering: flat fabric items (tablecloths, placemats, table runners).
+      thin_covering:
+        enabled: true
+        max_retries: 3
+        thickness_m: 0.002
+        texture_scale: 0.5
+        generator:
+          enabled: false
+          backend: "openai"
+          max_retries: 2
+          default_roughness: 128
+          texture_scale: 0.5
+  articulated:
+    sources:
+      artvip:
+        enabled: true
+
+collision_geometry:
+  server_port_range: [7100, 7350]
+  coacd:
+    threshold: 0.03
+    max_convex_hull: -1
+  vhacd:
+    max_convex_hulls: 64
+    resolution: 400000
+
+max_critique_rounds: 2
+early_finish_min_score: 8
+
+# Manipuland-specific extra reasoning/verbosity keys (planner/designer/critic/mesh_analysis/
+# asset_analysis/asset_validation are inherited from _base_agent.yaml).
+openai:
+  reasoning_effort:
+    furniture_analysis: "medium"
+    context_selection: "low"
+  verbosity:
+    furniture_analysis: "medium"
+    context_selection: "low"
+  furniture_analysis_max_retries: 3
+  context_selection_max_retries: 2
+
+# Context furniture configuration
+context_furniture:
+  enabled: true
+  distance_threshold_m: 2.0
+  max_candidates: 30
+  include_images: true
+
+physics_validation:
+  remove_fallen_manipulands: true
+  fallen_manipuland_floor_z: -1.0
+  fallen_manipuland_near_floor_z: 0.02
+  fallen_manipuland_z_displacement: 0.3
+
+support_surface_extraction:
+  hssd:
+    recompute_surfaces: false
+  face_clustering:
+    normal_cluster_threshold: 0.9
+    normal_adjacent_threshold: 0.95
+    horizontal_normal_z_min: 0.95
+    vertical_normal_z_max: 0.05
+  filtering:
+    min_surface_area_m2: 0.1
+    min_area_ratio: 0.20
+    min_inscribed_radius_m: 0.05  # 5 cm minimum inscribed radius (filters slivers)
+  clearance:
+    min_clearance_m: 0.05
+    max_measured_clearance_m: 5.0
+    top_surface_clearance_m: 0.5
+    self_intersection_threshold_m: 0.001
+    clearance_percentile: 10.0
+  height:
+    surface_offset_m: 0.01
+    use_max_z_for_surface_height: true
+    max_z_percentile: 99.5
+    height_tolerance_m: 0.05
+
+placement_noise:
+  natural_profile:
+    position_xy_std_meters: 0.01
+    rotation_yaw_std_degrees: 3.0
+  perfect_profile:
+    position_xy_std_meters: 0.001
+    rotation_yaw_std_degrees: 0.1
+
+placement_validation:
+  top_surface_overlap_tolerance: 0.05
+
+stack_simulation:
+  simulation_time: 5.0
+  simulation_time_step: 0.001
+  position_threshold: 1.0
+
+fill_simulation:
+  max_iterations: 3
+  simulation_time: 5.0
+  simulation_time_step: 0.001
+  catch_floor_z: -5.0
+  inside_z_threshold: -2.0
+  interior_scale: 0.85
+  top_rim_height_fraction: 0.15
+  spawn_height_above_rim: 0.01
+  height_stagger_fraction: 1.0
+  min_height_stagger: 0.02
+  nlp_influence_distance: 0.02
+  nlp_solver_name: "snopt"
+  max_nan_retries: 3
+
+# Named snap_to_object for compatibility with shared shape_analysis.py.
+snap_to_object:
+  circular_detection_volume_ratio_threshold: 0.85
+
+pile_simulation:
+  simulation_time: 5.0
+  simulation_time_step: 0.001
+  spawn_height_base: 0.005
+  height_stagger_fraction: 1.0
+  min_height_stagger: 0.02
+  spawn_radius_scale: 0.5
+  min_spawn_radius: 0.05
+  inside_z_threshold: -0.5
+
+per_furniture_postprocessing:
+  enabled: true
+  projection:
+    enabled: true
+    xy_only: false
+    fix_rotation: true
+    influence_distance: 0.02
+    solver_name: "snopt"
+    iteration_limit: 10000
+    time_limit_s: 360.0
+  simulation:
+    enabled: true
+    simulation_time_s: 5.0
+    time_step_s: 1.0e-3
+    timeout_s: 300.0
+    save_html: false
+    remove_fallen_manipulands: true
+    fallen_manipuland_floor_z: -1.0
+    fallen_manipuland_near_floor_z: 0.02
+    fallen_manipuland_z_displacement: 0.3
+
+context_image_generation:
+  enabled: false

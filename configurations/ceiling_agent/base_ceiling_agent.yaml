@@ -1,0 +1,65 @@
+# Ceiling agent configuration — agent-specific overrides.
+# Shared defaults (session_memory, openai, api_timeout, etc.) come from _base_agent.yaml.
+
+defaults:
+  - _base_agent
+
+rendering:
+  layout: "top_plus_sides"
+  top_view_width: 512
+  top_view_height: 512
+  side_view_count: 2
+  blender_server_port_range: [8000, 8250]
+  annotations:
+    enable_set_of_mark_labels: true
+    enable_bounding_boxes: true
+    # Ceiling objects hang down; direction arrows not essential.
+    enable_direction_arrows: false
+    enable_partial_walls: true
+    enable_support_surface_debug: false
+    enable_convex_hull_debug: false
+    enable_wall_grid: false
+
+asset_manager:
+  side_view_elevation_degrees: 0.0
+  # Ceiling objects (pendants, chandeliers) can be vertically elongated.
+  mesh_relative_dimension_threshold: 0.01
+  router:
+    strategies:
+      articulated:
+        enabled: true
+      # Thin covering not used for ceiling typically.
+      thin_covering:
+        enabled: false
+        max_retries: 3
+        thickness_m: 0.003
+        texture_scale: 0.5
+        generator:
+          enabled: false
+  articulated:
+    sources:
+      artvip:
+        enabled: false  # ArtVIP does not contain ceiling-mounted objects
+
+collision_geometry:
+  server_port_range: [7100, 7350]
+  coacd:
+    threshold: 0.1
+    max_convex_hull: 32
+  vhacd:
+    max_convex_hulls: 16
+    resolution: 100000
+
+max_turns: 1000
+max_critique_rounds: 1
+early_finish_min_score: 7
+
+# Ceiling-specific placement noise (horizontal plane: x, y positions).
+placement_noise:
+  mode: "auto"
+  natural_profile:
+    position_xy_std_meters: 0.02
+    rotation_yaw_std_degrees: 0.5
+  perfect_profile:
+    position_xy_std_meters: 0.001
+    rotation_yaw_std_degrees: 0.1

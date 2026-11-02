@@ -1,0 +1,30 @@
+name: Documentation
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+  push:
+    branches:
+      - main
+
+jobs:
+  mkdocs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+
+      # Lightweight install: avoid full uv sync (Torch/Drake, etc.) — matches versions in pyproject docs group.
+      - name: Install MkDocs
+        run: |
+          pip install "mkdocs>=1.6.1" "mkdocs-material>=9.7.6"
+
+      - name: Build documentation (strict)
+        run: mkdocs build --strict

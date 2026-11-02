@@ -1,0 +1,83 @@
+# Full, self-contained copy of repo ``configurations/`` for this bundle.
+# Run: uv run python main.py --config-path experiments/configs/E0_baseline +name=my_run
+#
+# Edit defaults below (or any YAML under this directory) without touching the shared
+# ``configurations/`` tree.
+
+# Configuration parsing starts here.
+
+# Provider settings and capability declarations.
+provider:
+  base_url: "${oc.env:PROVIDER_BASE_URL,null}"
+  model: "${oc.env:PROVIDER_MODEL,openai/gpt-oss-120b}"
+  api_key_env_var: "PROVIDER_API_KEY"
+  fallback_api_key_env_var: "OPENAI_API_KEY"
+  api:
+    standard_model_api: "chat_completions"
+    reasoning_model_api: "responses"
+  model_traits:
+    reasoning_native: false
+  capabilities:
+    supports_chat_completions: true
+    supports_responses_api: false
+    supports_reasoning_models: false
+    supports_final_answer_only_extraction: true
+    supports_reasoning_effort: true
+    supports_verbosity: true
+    supports_service_tier: true
+    supports_summarization_thinking: false
+    # "binary" → vLLM chat_template_kwargs.enable_thinking on/off.
+    # "openai" → forward reasoning_effort kwarg natively.
+    # "disabled" → never send thinking-related fields.
+    thinking_control_mode: "binary"
+    # Qwen-style: re-inject prior assistant reasoning_content into the next
+    # turn's history (Agents-SDK Converter patch). Saves 30-70% completion
+    # tokens per multi-turn tool step on Qwen3. Must be false for Gemma 4.
+    reinject_prior_reasoning: true
+    # Gemma-style: place image items before text in multimodal user content.
+    # Qwen has no documented preference; keep text-first.
+    multimodal_image_before_text: false
+    # Qwen3 + vLLM renders images in tool-role messages correctly; the
+    # Converter rewrite (scenesmith/provider.py) is not needed. Only the
+    # vLLM Gemma 4 31B deployment trips on that shape — see the gemma bundle.
+    tool_image_via_user_message: false
+    # Enabled: multi-role thinking runs accumulate malformed tool-call args that
+    # crash vLLM with HTTP 400 without this pass.
+    sanitize_tool_call_arguments: true
+  validation:
+    strict: true
+    probe: true
+    probe_timeout_s: 30.0
+    # Initial probe then up to N retries, sleeping probe_retry_interval_s between failures (cold GPU).
+    probe_retry_attempts: 5
+    probe_retry_interval_s: 60
+
+# Global OpenAI settings (propagated to all agents via Hydra interpolation).
+openai:
+  # Service tier for API processing. Valid values:
+  #   null       - Don't pass parameter (uses project default)
+  #   "default"  - Standard pricing and performance
+  #   "flex"     - Lower cost, slower processing (Batch API rates)
+  #   "priority" - Lower latency, premium pricing
+  service_tier: null
+
+defaults:
+  - experiment: example_bundle
+  - floor_plan_agent: stateful_floor_plan_agent
+  - furniture_agent: stateful_furniture_agent
+  - wall_agent: stateful_wall_agent
+  - ceiling_agent: stateful_ceiling_agent
+  - manipuland_agent: stateful_manipuland_agent
+  - task_analysis_agent: base_task_analysis_agent
+  - reward_spec_agent: base_reward_spec_agent
+  - morphology_task_agent: base_morphology_task_agent
+  - domain_randomization: base_domain_randomization
+  - _self_
+
+# Mandatory run label: set on CLI as +name=my_experiment (use a filesystem-safe string).
+# Included in the Hydra output directory below.
+name: ???
+
+hydra:
+  run:
+    dir: outputs/${now:%Y-%m-%d}/${name}_${now:%H-%M-%S}_${now:%f}

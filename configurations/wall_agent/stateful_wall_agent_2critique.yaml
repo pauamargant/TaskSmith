@@ -1,0 +1,4 @@
+defaults:
+  - stateful_wall_agent
+
+max_critique_rounds: 2

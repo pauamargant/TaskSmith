@@ -1,0 +1,50 @@
+# @package provider
+# Neutral / OpenAI-friendly preset.
+#
+# Use for OpenAI, Azure OpenAI, or any provider that:
+#   - honours the `reasoning_effort` kwarg natively,
+#   - does NOT accept Qwen-style reasoning_content re-injection,
+#   - has no documented preference for image/text ordering.
+#
+# Compose via CLI: `provider=neutral` (or set as a defaults entry).
+
+capabilities:
+  supports_chat_completions: true
+  supports_responses_api: false
+  supports_reasoning_models: false
+  supports_final_answer_only_extraction: true
+  supports_reasoning_effort: true
+  supports_verbosity: true
+  supports_service_tier: true
+  supports_summarization_thinking: false
+
+  # How reasoning_effort is delivered to the provider.
+  thinking_control_mode: "openai"
+
+  # Re-inject prior assistant reasoning_content into the next turn's history.
+  # OpenAI does not need this; keep off.
+  reinject_prior_reasoning: false
+
+  # Place input_image items before input_text in multimodal messages.
+  multimodal_image_before_text: false
+
+  # OpenAI / Azure / standard providers handle images inside tool-role
+  # messages natively; no Converter rewrite needed. Only the vLLM Gemma 4
+  # 31B deployment requires it (see configurations/provider/gemma.yaml).
+  tool_image_via_user_message: false
+  # OpenAI/Azure emit well-formed tool_call.arguments; no sanitization needed.
+  sanitize_tool_call_arguments: false
+
+# Sampling parameters forwarded to every LLM request. OpenAI-native kwargs
+# (temperature/top_p/presence_penalty/frequency_penalty) hit the API; vLLM-only
+# kwargs (top_k/min_p/repetition_penalty) are not honored by OpenAI/Azure and
+# should stay unset here. Leave empty to use the provider's defaults.
+sampling: {}
+#   temperature: 1.0
+#   top_p: 1.0
+#   presence_penalty: 0.0
+#   frequency_penalty: 0.0
+
+# Extra chat_template_kwargs (vLLM-only). OpenAI/Azure ignore extra_body fields
+# they don't recognize, so this is typically a no-op for the neutral preset.
+chat_template_kwargs: {}

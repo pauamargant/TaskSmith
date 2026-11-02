@@ -1,0 +1,72 @@
+# Wall agent configuration — agent-specific overrides.
+# Shared defaults (session_memory, openai, api_timeout, etc.) come from _base_agent.yaml.
+
+defaults:
+  - _base_agent
+
+rendering:
+  top_view_width: 512
+  top_view_height: 512
+  side_view_count: 0
+  blender_server_port_range: [8000, 8250]
+  grid_divisions: 5
+  wall_furniture_threshold_m: 0.5
+  annotations:
+    enable_set_of_mark_labels: true
+    enable_bounding_boxes: true
+    # Wall objects face into room; direction arrows not useful.
+    enable_direction_arrows: false
+    enable_partial_walls: true
+    enable_support_surface_debug: false
+    enable_convex_hull_debug: false
+    enable_wall_grid: true
+
+asset_manager:
+  side_view_elevation_degrees: 0.0
+  # Wall objects (frames, prints) are legitimately thin - allow 0.5% ratio.
+  mesh_relative_dimension_threshold: 0.005
+  router:
+    strategies:
+      articulated:
+        enabled: true
+      # Thin covering: textured flat surfaces (e.g., wall posters).
+      thin_covering:
+        enabled: true
+        max_retries: 1
+        thickness_m: 0.01
+        texture_scale: 0.5
+        generator:
+          enabled: false
+          backend: "openai"
+          max_retries: 3
+          default_roughness: 128
+          texture_scale: 0.5
+  articulated:
+    sources:
+      artvip:
+        enabled: true
+
+collision_geometry:
+  server_port_range: [7100, 7350]
+  coacd:
+    threshold: 0.03
+    max_convex_hull: -1
+  vhacd:
+    max_convex_hulls: 64
+    resolution: 400000
+
+max_turns: 1000
+max_critique_rounds: 1
+early_finish_min_score: 7
+
+# Wall-specific placement noise (wall axes: along wall, height).
+placement_noise:
+  mode: "auto"
+  natural_profile:
+    position_along_wall_std_meters: 0.02
+    position_height_std_meters: 0.01
+    rotation_std_degrees: 0.5
+  perfect_profile:
+    position_along_wall_std_meters: 0.001
+    position_height_std_meters: 0.001
+    rotation_std_degrees: 0.1

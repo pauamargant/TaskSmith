@@ -1,0 +1,6 @@
+# Task analysis agent configuration.
+# Used for both the initial TaskAnalysisAgent and the final RLArtifactAgent.
+
+openai:
+  model: "${oc.env:PROVIDER_MODEL,openai/gpt-oss-120b}"
+  service_tier: ${openai.service_tier}

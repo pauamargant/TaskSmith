@@ -1,0 +1,4 @@
+defaults:
+  - stateful_ceiling_agent
+
+max_critique_rounds: 4

@@ -1,0 +1,99 @@
+# Domain randomization configuration.
+# Extend this with overrides via CLI or a derived config.
+
+# Required: path to the base experiment directory.
+base_experiment_dir: null
+
+# Pipeline mode.
+#   "deterministic" — v1 path: planner/critic propose VariationSpecs that
+#                     execute via the programmatic or llm_directed strategies.
+#                     Default; preserves the surviving v1 CLI behavior.
+#                     (agent_rerun / hybrid strategies and the resume_stage /
+#                     cascade_downstream machinery were removed in Step 10.)
+#   "agentic"       — v2 path: Director proposes VariationGoals, each is
+#                     satisfied by a DRSubflowAgent (planner/designer/critic
+#                     loop). Parallelized via asyncio.gather; supports
+#                     identity-locked + pose-bounded task-critical mutations.
+mode: "deterministic"
+
+# Number of variations to generate.
+num_variations: 10
+
+# Optional natural language guidance for the planner / Director.
+# Example: "focus on varying clutter level and object placement"
+description: null
+
+# Optional path to a text file containing natural language guidance.
+# Prefer this over CLI text overrides when punctuation or multiline text matters.
+description_file: null
+
+# Output directory. Defaults to <base_experiment_dir>/randomizations/<timestamp>.
+output_dir: null
+
+# DR v2 Director knobs (only used when mode="agentic").
+director:
+  # When true, the Director runs one extra structured-output LLM call
+  # after proposing N goals to review them on specificity / diversity /
+  # difficulty spread and rewrite any that fail. Off by default — costs
+  # one additional LLM call per `propose_goals`. Turn on if Director
+  # output looks bland (vague descriptions, missing object refs, or
+  # difficulty values bunched in one band).
+  self_critique: false
+
+# DR v2 sibling-diversity controls (only used when mode="agentic").
+diversity:
+  # When true, after the first parallel wave of subflows finishes the
+  # orchestrator computes pairwise distances between the actual accepted
+  # scenes and re-runs any subflow whose result was too similar to a
+  # sibling, passing the real wave-1 snapshots into the wave-2 Critic.
+  # Off by default; turn on alongside num_variations >= 3 if the wave-1
+  # outputs look duplicate.
+  two_wave: false
+  # Diversity distance threshold for wave-2 redo (sum of count_diff +
+  # mean_xy_diff + hash_diff from check_diversity_vs_siblings).
+  min_distance: 0.05
+
+# Programmatic operation constraints.
+programmatic:
+  collision_check: true
+  task_critical_locked: true   # never modify task-critical objects
+
+# DR v2 subflow pairwise-collision feedback (only used when mode="agentic").
+# AABB-level only (rotation-ignorant, conservative). Designer sees new
+# collisions in the JSON returned by every mutation; Critic sees the
+# current collision list in the scene summary; accept_variation refuses
+# to accept while collisions remain.
+subflow:
+  collision_check:
+    enabled: true
+    # Surface freshly-introduced collisions in the JSON returned by
+    # move_manipuland / remove_manipuland / swap_asset / etc. Helps the
+    # Designer self-correct without burning a critic round.
+    feedback_to_designer: true
+    # Include the current collision list in the scene summary fed to the
+    # Critic so feasibility grades reflect real overlaps.
+    surface_to_critic: true
+    # Hard-gate: accept_variation refuses if collisions remain (planner
+    # must force another revision).
+    block_accept: true
+    # AABB inflation in metres. 0 = exact AABB. Use a small negative
+    # value (e.g. -0.005) to allow micro-overlaps (mesh skin tolerance);
+    # positive widens the margin and yields more false positives.
+    margin_m: 0.0
+    # When true, ignore collisions among task-critical ids (the LLM
+    # cannot move them apart anyway in identity-locked mode). Off by
+    # default so they still appear in the report.
+    ignore_pairs_within_task_critical: false
+
+# LLM settings for domain randomization agents (Director, Subflow Critic).
+# reasoning_effort maps to enable_thinking on vLLM binary providers (Qwen/Gemma):
+#   "minimal" → enable_thinking=false  |  any other value → enable_thinking=true
+# Set to "minimal" to disable thinking for faster/cheaper DR runs.
+openai:
+  reasoning_effort: "medium"
+  verbosity: "medium"
+
+# Export format flags.
+exports:
+  drake: true
+  blender: false

@@ -1,0 +1,22 @@
+defaults:
+  - base_experiment
+  - _self_
+
+# Tabletop mode: flat floor + one LLM-placed table + manipulands.
+# No walls, no ceiling, no room enclosure.
+#
+# Usage:
+#   uv run python main.py +name=tabletop_scene \
+#     experiment=tabletop \
+#     manipuland_agent=tabletop_manipuland_agent \
+#     furniture_agent=tabletop_furniture_agent \
+#     "experiment.prompts=['A table with a mug, book, and pen.']" \
+#     experiment.num_workers=1
+
+tabletop_mode: true
+tabletop_room_size: [4.0, 4.0]  # metres — resize if the table is unusually large
+
+pipeline:
+  # wall_mounted / ceiling_mounted have nothing to attach to.
+  # reward_spec / morphology_task require a full task-aware run; skip for now.
+  skip_stages: [wall_mounted, ceiling_mounted, reward_spec, morphology_task]

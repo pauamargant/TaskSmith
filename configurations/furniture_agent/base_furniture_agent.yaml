@@ -1,0 +1,86 @@
+# Furniture agent configuration — agent-specific overrides.
+# Shared defaults (session_memory, openai, api_timeout, etc.) come from _base_agent.yaml.
+
+defaults:
+  - _base_agent
+
+rendering:
+  layout: "top_plus_sides"
+  top_view_width: 1024
+  top_view_height: 1024
+  side_view_count: 4
+  blender_server_port_range: [8000, 8350]
+  # EEVEE TAA samples for render quality.
+  taa_samples: 8
+  annotations:
+    enable_set_of_mark_labels: true
+    enable_bounding_boxes: true
+    enable_direction_arrows: true
+    enable_partial_walls: true
+    enable_support_surface_debug: false
+    enable_convex_hull_debug: false
+
+asset_manager:
+  side_view_elevation_degrees: 20.0
+  mesh_relative_dimension_threshold: 0.02
+  router:
+    strategies:
+      articulated:
+        enabled: false
+      # Thin covering: flat floor surfaces (rugs, yoga mats, runners).
+      thin_covering:
+        enabled: true
+        max_retries: 3
+        thickness_m: 0.003
+        texture_scale: 0.5
+        generator:
+          enabled: false
+          backend: "openai"
+          max_retries: 2
+          default_roughness: 128
+          texture_scale: 0.5
+  articulated:
+    sources:
+      artvip:
+        enabled: true
+
+collision_geometry:
+  server_port_range: [7100, 7450]
+  coacd:
+    threshold: 0.03
+    max_convex_hull: -1
+  vhacd:
+    max_convex_hulls: 32
+    resolution: 400000
+
+max_turns: 1000
+max_critique_rounds: 2
+early_finish_min_score: 9
+
+physics_validation:
+  remove_fallen_furniture: true
+  fallen_tilt_threshold_degrees: 45.0
+
+reachability:
+  robot_width: 0.3
+
+snap_to_object:
+  voxel_pitch_meters: 0.03
+  min_vertices_threshold: 10000
+  circular_detection_volume_ratio_threshold: 0.80
+  iterative_snap_step_m: 0.01
+  max_snap_distance_m: 10.0
+  snap_margin_m: 0.01
+  max_sample_vertices: 2000
+
+placement_noise:
+  mode: "auto"
+  natural_profile:
+    position_xy_std_meters: 0.03
+    rotation_yaw_std_degrees: 1.0
+  perfect_profile:
+    position_xy_std_meters: 0.001
+    rotation_yaw_std_degrees: 0.1
+
+context_image_generation:
+  enabled: false

@@ -1,0 +1,5 @@
+# Reward spec agent configuration.
+
+openai:
+  model: "${oc.env:PROVIDER_MODEL,openai/gpt-oss-120b}"
+  service_tier: ${openai.service_tier}

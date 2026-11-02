@@ -1,0 +1,196 @@
+# Shared base configuration for all stateful room-object agents.
+# Referenced via: defaults: [_base_agent] in base_*_agent.yaml files.
+# Per-agent keys (top_view_*, side_view_count, port_range, fallen_*, etc.)
+# live in the individual base_*_agent.yaml override files.
+
+# Central resolution control. Overrides rendering.resolution_preset and
+# asset_manager.validation_rendering.resolution_preset when set.
+# null = use individual keys directly (no change to current behaviour).
+# Note: openai.vision_detail is NOT controlled here — it is accepted by config
+# but silently ignored by the current vLLM provider.
+image_quality_preset: null  # low (256px) | medium (512px) | high (1024px)
+
+session_memory:
+  enabled: true
+  keep_last_n_turns: 1
+  enable_summarization: true
+  summarization_model: "${provider.model}"
+  summarization_thinking: null
+  intra_turn_observation_stripping:
+    enabled: true
+    keep_last_n_observations: 2
+
+rendering:
+  resolution_preset: null
+  # Sides default to 1024² to match top view — gives the critic legible images
+  # for chair/table orientation. NOTE: if image_quality_preset (top of file) is
+  # set non-null it overrides these and forces sides to top/2.
+  side_view_width: 1024
+  side_view_height: 1024
+  # Tighter framing margins than the historical 1.40 (side) / 1.8 (top) defaults
+  # in calculate_camera_distance — scene now fills ~75% of frame vs ~55%.
+  side_view_margin_scale: 1.2
+  top_view_margin_scale: 1.4
+  # Append a 5th view at elevation=45°, azimuth=45° (corner above-the-room view).
+  # Helps the critic read chair-table relationships at a glance.
+  include_isometric_view: true
+  isometric_elevation_degrees: 45
+  isometric_azimuth_degrees: 45
+  background_color: [1.0, 1.0, 1.0]
+  blender_server_host: "127.0.0.1"
+  retry_count: 10
+  retry_delay: 3
+  server_startup_delay: 0.1
+  port_cleanup_delay: 0.1
+
+asset_manager:
+  general_asset_source: "hssd"
+  parallel_vlm_physics: false
+
+  router:
+    enabled: true
+    parallel_workers: 10
+    conversion_max_retries: 1
+    analysis_max_retries: 3
+    strategies:
+      generated:
+        enabled: true
+        max_retries: 2
+      articulated:
+        # articulated.enabled is per-agent (furniture=false, others=true)
+        max_retries: 3
+        use_lenient_validation: true
+      # thin_covering is entirely per-agent (enabled/thickness_m/max_retries differ)
+
+  sam3d:
+    sam3_checkpoint: "external/checkpoints/sam3.pt"
+    sam3d_checkpoint: "external/checkpoints/pipeline.yaml"
+    mode: "foreground"
+    threshold: 0.5
+
+  hssd:
+    data_path: "data/hssd-models"
+    preprocessed_path: "data/preprocessed"
+    use_top_k: 5
+    use_lenient_validation: true
+    object_type_mapping:
+      FURNITURE: "large_objects"
+      MANIPULAND: "small_objects"
+      WALL_MOUNTED: "wall_objects"
+      CEILING_MOUNTED: "ceiling_objects"
+
+  objaverse:
+    data_path: "data/objathor-assets"
+    preprocessed_path: "data/objathor-assets/preprocessed"
+    use_top_k: 5
+    use_lenient_validation: true
+    object_type_mapping:
+      FURNITURE: "large_objects"
+      MANIPULAND: "small_objects"
+      WALL_MOUNTED: "wall_objects"
+      CEILING_MOUNTED: "ceiling_objects"
+
+  articulated:
+    enable_self_collision_filtering: true
+    use_top_k: 5
+    sources:
+      partnet_mobility:
+        enabled: false
+        data_path: "data/partnet_mobility_sdf"
+        embeddings_path: "data/partnet_mobility_sdf/embeddings"
+      artvip:
+        # artvip.enabled is per-agent (ceiling=false, others=true)
+        data_path: "data/artvip_sdf"
+        embeddings_path: "data/artvip_sdf/embeddings"
+
+  image_generation:
+    backend: "openai"
+    openai:
+      quality: "low"
+    gemini:
+      aspect_ratio: "1:1"
+      image_size: "1K"
+
+  num_side_views_for_physics_analysis: 2
+  floater_distance_threshold: 0.05
+  min_mesh_dimension_meters: 0.001
+  validation_taa_samples: 1
+  validation_rendering:
+    resolution_preset: "medium"
+  # Per-agent: side_view_elevation_degrees, mesh_relative_dimension_threshold
+
+collision_geometry:
+  method: "vhacd"
+
+  coacd:
+    # Per-agent: threshold, max_convex_hull
+    preprocess_mode: "auto"
+    preprocess_resolution: 50
+    resolution: 2000
+    mcts_nodes: 20
+    mcts_iterations: 150
+    mcts_max_depth: 3
+    pca: false
+    merge: true
+    decimate: false
+    max_ch_vertex: 256
+    extrude: false
+    extrude_margin: 0.01
+    apx_mode: "ch"
+    seed: 0
+
+  vhacd:
+    # Per-agent: max_convex_hulls, resolution
+    max_recursion_depth: 10
+    max_num_vertices_per_ch: 64
+    min_volume_percent_error: 1.0
+    shrink_wrap: true
+    fill_mode: "flood"
+    min_edge_length: 2
+    find_best_plane: false
+
+  # Per-agent: server_port_range
+
+reset_single_category_threshold: 2
+reset_total_sum_threshold: 1
+
+openai:
+  model: "${provider.model}"
+  service_tier: ${openai.service_tier}
+  vision_detail: "high"
+  reasoning_effort:
+    planner: "low"
+    designer: "high"
+    critic: "high"
+    mesh_analysis: "minimal"
+    asset_analysis: "medium"
+    asset_validation: "minimal"
+  verbosity:
+    planner: "medium"
+    designer: "low"
+    critic: "medium"
+    mesh_analysis: "medium"
+    asset_analysis: "medium"
+    asset_validation: "medium"
+
+api_timeout:
+  connect: 10.0
+  read: 1800
+  write: 1800
+  pool: 1800
+
+loop_detection:
+  enabled: true
+  max_repeated_attempts: 25
+  tracking_window: 30
+
+physics_validation:
+  wall_thickness: 0.05
+  floor_penetration_tolerance_m: 0.05
+  object_penetration_threshold_m: 0.001
+  manipuland_furniture_tolerance_m: 0.02
+  # Per-agent: fallen removal keys (remove_fallen_furniture, remove_fallen_manipulands, etc.)
+
+clearance_zones:
+  passage_size: 0.5
+  open_connection_clearance: 0.7

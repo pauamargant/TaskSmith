@@ -1,0 +1,62 @@
+# @package provider
+# Gemma 4-on-vLLM preset.
+#
+# - Routes reasoning_effort through chat_template_kwargs.enable_thinking
+#   (binary mode; Gemma 4 has no thinking_budget knob — only enable_thinking).
+# - Does NOT re-inject prior reasoning_content. The Gemma 4 model card is
+#   explicit: "No Thinking Content in History — thoughts from previous model
+#   turns must not be added before the next user turn begins."
+# - Image-before-text ordering per the Gemma 4 model card recommendation:
+#   "For optimal performance with multimodal inputs, place image and/or audio
+#   content before the text in your prompt."
+#
+# Compose via CLI: `provider=gemma`. Requires a vLLM server launched with
+# --reasoning-parser gemma4 --tool-call-parser gemma4
+# --chat-template examples/tool_chat_template_gemma4.jinja
+# --enable-auto-tool-choice.
+
+capabilities:
+  supports_chat_completions: true
+  supports_responses_api: false
+  supports_reasoning_models: false
+  supports_final_answer_only_extraction: true
+  supports_reasoning_effort: true
+  supports_verbosity: true
+  supports_service_tier: true
+  supports_summarization_thinking: false
+
+  thinking_control_mode: "binary"
+  reinject_prior_reasoning: false
+  multimodal_image_before_text: true
+  # vLLM-served Gemma 4 31B returns 500 "Failed to apply prompt replacement
+  # for mm_items['image'][0]" whenever a tool-role message carries an image
+  # content item. The Converter post-pass in scenesmith/provider.py rewrites
+  # those into tool(text) + user(image) — same tool_call_id linkage, image
+  # in a shape the chat template can render. Verified end-to-end against
+  # EPFL google/gemma-4-31B-it on 2026-05-20.
+  tool_image_via_user_message: true
+  # Gemma 4 + enable_thinking occasionally emits malformed JSON for
+  # tool_call.arguments ("{" + 48k whitespace + nothing). Replaying that as
+  # history makes vLLM 400 with "Expecting property name enclosed in double
+  # quotes". The Converter post-pass in scenesmith/provider.py replaces
+  # unparseable arguments with "{}" before send. Verified against EPFL
+  # google/gemma-4-26B-A4B-it on 2026-05-20 (critic call, req_0012).
+  sanitize_tool_call_arguments: true
+
+# Sampling parameters forwarded to every LLM request. Native OpenAI kwargs
+# (temperature/top_p/presence_penalty/frequency_penalty) hit the API directly;
+# vLLM-only kwargs (top_k/min_p/repetition_penalty) ride in extra_body. Values
+# below follow the Gemma 4 model card recommendation for chat/tool use.
+sampling:
+  temperature: 1.0
+  top_p: 0.95
+  top_k: 64
+# defaults (commented for reference):
+#   temperature: 1.0
+#   top_p: 0.95
+#   top_k: 64
+#   min_p: 0.0
+
+# Extra chat_template_kwargs merged into every request's
+# extra_body.chat_template_kwargs alongside enable_thinking. Empty by default.
+chat_template_kwargs: {}

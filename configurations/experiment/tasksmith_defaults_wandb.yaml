@@ -1,0 +1,29 @@
+# Full pipeline (all stages) with live Weights & Biases during generation.
+# Critique rounds: floor_plan, furniture, and manipuland use max_critique_rounds=2 from
+# their bases; wall_mounted and ceiling_mounted default to 1 upstream — use
+# wall_agent=stateful_wall_agent_2critique ceiling_agent=stateful_ceiling_agent_2critique
+# for two rounds on those stages as well.
+
+defaults:
+  - indoor_scene_generation
+  - _self_
+
+num_workers: 1
+
+prompts:
+  - "A well-lit residential kitchen featuring a central wooden dining table and a fixed stone countertop along the wall."
+
+pipeline:
+  start_stage: floor_plan
+  stop_stage: morphology_task
+  skip_stages: []
+
+tracking:
+  wandb:
+    enabled: true
+    project: "${oc.env:WANDB_PROJECT,tasksmith}"
+    entity: null
+    mode: online
+    poll_interval_s: 10
+    log_images: true
+    fail_on_error: false

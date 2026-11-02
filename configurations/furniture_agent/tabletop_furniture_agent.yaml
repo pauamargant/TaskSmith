@@ -1,0 +1,8 @@
+defaults:
+  - stateful_furniture_agent
+
+# Tabletop furniture overrides.
+# The prompt already hard-constrains the agent to place exactly one table,
+# so a single critique round is sufficient — avoids the critic requesting
+# more items and wasting turns.
+max_critique_rounds: 1

@@ -1,0 +1,33 @@
+# Domain randomization configuration.
+# Extend this with overrides via CLI or a derived config.
+
+# Required: path to the base experiment directory.
+base_experiment_dir: null
+
+# Number of variations to generate.
+num_variations: 10
+
+# Optional natural language guidance for the planner.
+# Example: "focus on varying clutter level and object placement"
+description: null
+
+# Optional path to a text file containing natural language guidance.
+# Prefer this over CLI text overrides when punctuation or multiline text matters.
+description_file: null
+
+# Output directory. Defaults to <base_experiment_dir>/randomizations/<timestamp>.
+output_dir: null
+
+# Programmatic operation constraints.
+programmatic:
+  collision_check: true
+  task_critical_locked: true   # never modify task-critical objects
+
+# Agent re-run constraints.
+agent_rerun:
+  max_cascade_stages: 4
+
+# Export format flags.
+exports:
+  drake: true
+  blender: false

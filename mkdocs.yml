@@ -1,0 +1,47 @@
+site_name: TaskSmith Documentation
+site_description: Task-aware agentic scene generation for robot learning (fork of SceneSmith).
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - admonition
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - Quickstart: getting-started/quickstart.md
+      - Installation: getting-started/installation.md
+      - Paper experiments: getting-started/paper-experiments.md
+      - Configuration system: getting-started/configuration.md
+      - Experiment bundles: getting-started/experiment-bundles.md
+  - Pipeline:
+      - Overview: pipeline/overview.md
+      - Stage control: pipeline/stage-control.md
+  - Features:
+      - Task-aware generation: features/task-aware-generation.md
+      - Tabletop mode: features/tabletop-mode.md
+      - Domain randomization: features/domain-randomization.md
+      - Experiment tracking: features/experiment-tracking.md
+      - Providers & models: features/providers.md
+  - Contributing:
+      - Publishing docs: contributing/publishing.md

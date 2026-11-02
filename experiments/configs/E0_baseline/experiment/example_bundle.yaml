@@ -1,0 +1,26 @@
+# E0 baseline preset (single-scene prompt, skip wall+ceiling, no live W&B).
+
+defaults:
+  - indoor_scene_generation
+  - _self_
+
+num_workers: 1
+
+prompts:
+  - "A compact kitchen-dining area (single room) with one exterior window and one door. The room has a fixed stone countertop along one wall, a wooden sideboard with drawers against another wall, a tall potted plant in one corner, and a rectangular wooden dining table centered in the room with four chairs. On the table are a dinner plate, a bowl, a glass, a fork, and a knife. On the countertop are a cutting board, a sponge, and a small pot. Task: the robot must set the table correctly by arranging the plate, bowl, glass, fork, and knife in a proper place setting on the table."
+
+pipeline:
+  start_stage: floor_plan
+  stop_stage: morphology_task
+  skip_stages: [wall_mounted, ceiling_mounted]
+
+tracking:
+  wandb:
+    enabled: true
+    project: "${oc.env:WANDB_PROJECT,tasksmith}"
+    entity: null
+    mode: online
+    poll_interval_s: 10
+    log_images: true
+    fail_on_error: false
+

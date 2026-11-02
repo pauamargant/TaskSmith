@@ -1,0 +1,22 @@
+defaults:
+  - indoor_scene_generation
+  - _self_
+
+# Local LLM experiment configuration.
+#
+# Designed for runs using a local vLLM server (e.g. Gemma 4 E4B on RTX 5080).
+# Key differences from the baseline:
+#
+#   CLIP device — forced to CPU via CUDA_VISIBLE_DEVICES="" in run_local.sh so
+#   the retrieval servers (HSSD, materials, articulated) do not compete with
+#   the vLLM container for the single GPU's VRAM.
+#
+#   Image quality — set to "low" (256 px) for all agents via run_local.sh
+#   CLI overrides; local inference is slower so smaller renders reduce token
+#   cost and latency without meaningfully harming spatial reasoning.
+#
+#   Morphology task skipped by default — requires pre-existing rl_artifacts.json
+#   from a full prior run; not useful for pipeline validation with a local model.
+
+pipeline:
+  skip_stages: [morphology_task]

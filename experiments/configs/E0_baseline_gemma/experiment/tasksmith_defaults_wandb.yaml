@@ -1,0 +1,31 @@
+# Full pipeline (all stages) with live Weights & Biases during generation.
+# Critique rounds (baseline):
+# - floor_plan: 2
+# - manipuland: 2
+# - ceiling: 1
+# - furniture: 3
+# - wall: 1
+
+defaults:
+  - indoor_scene_generation
+  - _self_
+
+num_workers: 1
+
+prompts:
+  - "A well-lit residential kitchen featuring a central wooden dining table and a fixed stone countertop along the wall."
+
+pipeline:
+  start_stage: floor_plan
+  stop_stage: morphology_task
+  skip_stages: []
+
+tracking:
+  wandb:
+    enabled: true
+    project: "${oc.env:WANDB_PROJECT,tasksmith}"
+    entity: null
+    mode: online
+    poll_interval_s: 10
+    log_images: true
+    fail_on_error: false

@@ -1,0 +1,12 @@
+defaults:
+  - stateful_manipuland_agent
+
+# Tabletop manipuland overrides.
+# Wider HSSD search for richer tabletop object selection.
+max_critique_rounds: 4
+
+asset_manager:
+  hssd:
+    # Retrieve 12 candidates per query instead of 5, so the planner can
+    # pick from a broader set of plausible tabletop objects.
+    use_top_k: 12

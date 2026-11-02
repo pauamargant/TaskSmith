@@ -1,0 +1,54 @@
+# @package provider
+# Qwen3-on-vLLM preset (current EPFL/RCP default).
+#
+# - Routes reasoning_effort through chat_template_kwargs.enable_thinking
+#   (binary mode — the historical thinking_budget map was removed after
+#   RCP probing showed it was silently ignored; see
+#   .docs/canonicalization_vlm_investigation.md §9).
+# - Re-injects prior reasoning_content into the next turn's history; Qwen
+#   recommends this and skipping it costs 30-70% extra completion tokens
+#   per tool turn (measured on Qwen3.6-35B-A3B-FP8).
+# - Keeps text-first multimodal ordering (no documented Qwen preference).
+#
+# Compose via CLI: `provider=qwen`.
+
+capabilities:
+  supports_chat_completions: true
+  supports_responses_api: false
+  supports_reasoning_models: false
+  supports_final_answer_only_extraction: true
+  supports_reasoning_effort: true
+  supports_verbosity: true
+  supports_service_tier: true
+  supports_summarization_thinking: false
+
+  thinking_control_mode: "binary"
+  reinject_prior_reasoning: true
+  multimodal_image_before_text: false
+  # Qwen3 + vLLM renders images inside tool-role messages correctly; no
+  # rewrite needed. (Gemma 4 31B is the only deployment that requires the
+  # Converter post-pass in scenesmith/provider.py.)
+  tool_image_via_user_message: false
+  # Qwen3 emits well-formed tool_call.arguments; no sanitization needed.
+  sanitize_tool_call_arguments: false
+
+# Sampling parameters forwarded to every LLM request. Native OpenAI kwargs
+# (temperature/top_p/presence_penalty/frequency_penalty) hit the API directly;
+# vLLM-only kwargs (top_k/min_p/repetition_penalty) ride in extra_body. Values
+# below match the Qwen3 model card recommendation for thinking + tool use.
+# Set any key to null (or remove it) to fall back to the provider default.
+sampling:
+  temperature: 1.0
+  top_p: 0.95
+  top_k: 20
+  min_p: 0.0
+  presence_penalty: 1.5
+  repetition_penalty: 1.0
+
+# Extra chat_template_kwargs merged into every request's
+# extra_body.chat_template_kwargs alongside the enable_thinking flag set from
+# reasoning_effort. Existing keys (e.g. enable_thinking) win over user values.
+# Example: vLLM "preserve_thinking" toggle (uncomment to enable):
+# chat_template_kwargs:
+#   preserve_thinking: true
+chat_template_kwargs: {}

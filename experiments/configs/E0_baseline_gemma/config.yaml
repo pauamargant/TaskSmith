@@ -1,0 +1,112 @@
+# Full, self-contained copy of repo ``configurations/`` for the Gemma 4 baseline.
+# Run: uv run python main.py --config-path experiments/configs/E0_baseline_gemma +name=my_run
+#
+# Mirrors ``E0_baseline`` but with Gemma 4 provider capability flags:
+#   - reinject_prior_reasoning: false  (HF model card: "No Thinking Content in History")
+#   - multimodal_image_before_text: true  (HF model card multimodal recommendation)
+#
+# Requires the vLLM server to be launched with
+# ``--reasoning-parser gemma4 --tool-call-parser gemma4
+# --chat-template examples/tool_chat_template_gemma4.jinja --enable-auto-tool-choice``
+# and ``PROVIDER_MODEL=google/gemma-4-31B-it`` (or similar) in ``.env``.
+#
+# Edit defaults below (or any YAML under this directory) without touching the shared
+# ``configurations/`` tree.
+
+# Configuration parsing starts here.
+
+# Provider settings and capability declarations.
+provider:
+  base_url: "${oc.env:PROVIDER_BASE_URL,null}"
+  model: "${oc.env:PROVIDER_MODEL,openai/gpt-oss-120b}"
+  api_key_env_var: "PROVIDER_API_KEY"
+  fallback_api_key_env_var: "OPENAI_API_KEY"
+  api:
+    standard_model_api: "chat_completions"
+    reasoning_model_api: "responses"
+  model_traits:
+    reasoning_native: false
+  capabilities:
+    supports_chat_completions: true
+    supports_responses_api: false
+    supports_reasoning_models: false
+    supports_final_answer_only_extraction: true
+    supports_reasoning_effort: true
+    supports_verbosity: true
+    supports_service_tier: true
+    supports_summarization_thinking: false
+    # "binary" → vLLM chat_template_kwargs.enable_thinking on/off.
+    # "openai" → forward reasoning_effort kwarg natively.
+    # "disabled" → never send thinking-related fields.
+    # Set to "disabled" here so build_thinking_extra_body returns {} and the
+    # explicit chat_template_kwargs.enable_thinking=false below wins, forcing
+    # vLLM to skip Gemma's thinking phase. Thinking on Gemma 4 + structured
+    # outputs / tool calls occasionally derails into thousands of whitespace
+    # chars (see provider.capabilities.sanitize_tool_call_arguments docstring
+    # and the asset_router ModelBehaviorError observed on 2026-05-20).
+    thinking_control_mode: "disabled"
+    # Gemma 4 model card: "No Thinking Content in History — thoughts from
+    # previous model turns must not be added before the next user turn begins."
+    # Must stay false; re-injecting CoT actively degrades Gemma multi-turn quality.
+    reinject_prior_reasoning: false
+    # Gemma 4 model card multimodal recommendation: place image and/or audio
+    # content before the text in your prompt for optimal performance.
+    multimodal_image_before_text: true
+    # vLLM Gemma 4 31B's chat template can't render images inside tool-role
+    # messages (returns 500 "Failed to apply prompt replacement for
+    # mm_items['image'][0]"). The Converter post-pass in
+    # scenesmith/provider.py rewrites tool(image) into tool(text) + user(image)
+    # so the model still sees the image via a user-role message. 26B-A4B
+    # doesn't need this but accepts it; left on for portability across Gemma 4
+    # variants. Verified on 2026-05-20.
+    tool_image_via_user_message: true
+    # Gemma 4 + enable_thinking sometimes emits "{<48k whitespace>" as
+    # tool_call.arguments; replaying that 400s vLLM with
+    # "Expecting property name enclosed in double quotes". The Converter
+    # post-pass rewrites unparseable arguments to "{}" so the request goes
+    # through and the model self-corrects next turn. Verified against EPFL
+    # google/gemma-4-26B-A4B-it on 2026-05-20 (floor_plan critic call).
+    sanitize_tool_call_arguments: true
+  validation:
+    strict: true
+    probe: true
+    probe_timeout_s: 30.0
+    # Initial probe then up to N retries, sleeping probe_retry_interval_s between failures (cold GPU).
+    probe_retry_attempts: 5
+    probe_retry_interval_s: 60
+  # Extra chat_template_kwargs merged into every request's
+  # extra_body.chat_template_kwargs. With thinking_control_mode=disabled,
+  # build_thinking_extra_body returns {} and the value below is the final
+  # extra_body.chat_template_kwargs.enable_thinking sent to vLLM.
+  chat_template_kwargs:
+    enable_thinking: false
+
+# Global OpenAI settings (propagated to all agents via Hydra interpolation).
+openai:
+  # Service tier for API processing. Valid values:
+  #   null       - Don't pass parameter (uses project default)
+  #   "default"  - Standard pricing and performance
+  #   "flex"     - Lower cost, slower processing (Batch API rates)
+  #   "priority" - Lower latency, premium pricing
+  service_tier: null
+
+defaults:
+  - experiment: example_bundle
+  - floor_plan_agent: stateful_floor_plan_agent
+  - furniture_agent: stateful_furniture_agent
+  - wall_agent: stateful_wall_agent
+  - ceiling_agent: stateful_ceiling_agent
+  - manipuland_agent: stateful_manipuland_agent
+  - task_analysis_agent: base_task_analysis_agent
+  - reward_spec_agent: base_reward_spec_agent
+  - morphology_task_agent: base_morphology_task_agent
+  - domain_randomization: base_domain_randomization
+  - _self_
+
+# Mandatory run label: set on CLI as +name=my_experiment (use a filesystem-safe string).
+# Included in the Hydra output directory below.
+name: ???
+
+hydra:
+  run:
+    dir: outputs/${now:%Y-%m-%d}/${name}_${now:%H-%M-%S}_${now:%f}

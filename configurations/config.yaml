@@ -1,0 +1,82 @@
+# Configuration parsing starts here.
+
+# Provider settings.
+#
+# The `capabilities` block is composed from a preset under configurations/provider/
+# (selected via the `provider:` entry in the defaults list below). Swap presets
+# from the CLI with `provider=neutral` / `provider=qwen` / `provider=gemma`
+# — no code edits to switch model families.
+provider:
+  base_url: "${oc.env:PROVIDER_BASE_URL,null}"
+  model: "${oc.env:PROVIDER_MODEL,openai/gpt-oss-120b}"
+  api_key_env_var: "PROVIDER_API_KEY"
+  fallback_api_key_env_var: "OPENAI_API_KEY"
+  api:
+    standard_model_api: "chat_completions"
+    reasoning_model_api: "responses"
+  model_traits:
+    reasoning_native: false
+  # capabilities: populated by the `provider` preset (see defaults list below).
+  validation:
+    strict: true
+    probe: true
+    probe_timeout_s: 30.0
+    # Initial probe then up to N retries, sleeping probe_retry_interval_s between failures (cold GPU).
+    probe_retry_attempts: 5
+    probe_retry_interval_s: 60
+  retry:
+    # These values are read from environment variables at runtime.
+    # Set env vars to override; values here document the defaults only.
+    #
+    # Over-retry note: PROVIDER_MAX_RETRIES (SDK-level) runs inside each
+    # TASKSMITH_PROVIDER_MAX_ATTEMPTS (transport-level) attempt.
+    # Worst case: 5 × 3 = 15 total attempts per Runner.run() call.
+
+    # Naming inconsistency: TASKSMITH_PROVIDER_MAX_ATTEMPTS counts *total attempts* (3 = 3 tries),
+    # while TASKSMITH_LLM_MAX_RETRIES counts *retries* (5 → 6 total tries). Keep this in mind
+    # when tuning — do not assume both env vars use the same semantics.
+
+    # Transport retry wrapper — scenesmith/llm_retry.py
+    max_attempts: 3          # env: TASKSMITH_PROVIDER_MAX_ATTEMPTS (total attempts, not retries)
+    base_backoff_s: 2.0      # env: TASKSMITH_PROVIDER_RETRY_BACKOFF_S
+
+    # OpenAI SDK client (Agents SDK path) — scenesmith/provider.py (_DEFAULT_TIMEOUT_S)
+    sdk_timeout_s: 360       # env: PROVIDER_TIMEOUT_S
+    sdk_max_retries: 5       # env: PROVIDER_MAX_RETRIES (retries → 6 total attempts)
+
+    # Direct openai-client calls (turn trimming) — scenesmith/openai_adapter.py (_default_llm_timeout_s)
+    direct_timeout_s: 360    # env: TASKSMITH_LLM_TIMEOUT_S
+    direct_max_retries: 5    # env: TASKSMITH_LLM_MAX_RETRIES (retries → 6 total attempts)
+
+    # Floater cleanup subprocess — scenesmith/agent_utils/asset_manager.py
+    floater_clean_timeout_s: 180  # env: TASKSMITH_FLOATER_CLEAN_TIMEOUT_S
+
+# Global OpenAI settings (propagated to all agents via Hydra interpolation).
+openai:
+  # Service tier for API processing. Valid values:
+  #   null       - Don't pass parameter (uses project default)
+  #   "default"  - Standard pricing and performance
+  #   "flex"     - Lower cost, slower processing (Batch API rates)
+  #   "priority" - Lower latency, premium pricing
+  service_tier: null
+
+defaults:
+  - provider: qwen # Provider capability preset: neutral | qwen | gemma — see configurations/provider/
+  - experiment: indoor_scene_generation # Experiment yaml file name in configurations/experiment folder
+  - floor_plan_agent: stateful_floor_plan_agent # Floor plan agent config in configurations/floor_plan_agent folder
+  - furniture_agent: stateful_furniture_agent # Furniture agent yaml file name in configurations/furniture_agent folder
+  - wall_agent: stateful_wall_agent # Wall agent yaml file name in configurations/wall_agent folder
+  - ceiling_agent: stateful_ceiling_agent # Ceiling agent yaml file name in configurations/ceiling_agent folder
+  - manipuland_agent: stateful_manipuland_agent # Manipuland agent yaml file name in configurations/manipuland_agent folder
+  - task_analysis_agent: base_task_analysis_agent # Task analysis agent config in configurations/task_analysis_agent folder
+  - reward_spec_agent: base_reward_spec_agent # Reward spec agent config in configurations/reward_spec_agent folder
+  - morphology_task_agent: base_morphology_task_agent # Morphology task agent config in configurations/morphology_task_agent folder
+  - domain_randomization: base_domain_randomization # Domain randomization config in configurations/domain_randomization folder
+
+# Mandatory run label: set on CLI as +name=my_experiment (use a filesystem-safe string).
+# Included in the Hydra output directory below.
+name: ???
+
+hydra:
+  run:
+    dir: outputs/${now:%Y-%m-%d}/${name}_${now:%H-%M-%S}_${now:%f}

@@ -1,0 +1,153 @@
+# Tasks to run sequentially
+tasks: [generate_scenes]
+
+# Path to CSV file with scene prompts (optional).
+# If set, overrides the prompts list below.
+# CSV format: scene_index,prompt (header row required).
+# Example:
+#   scene_index,prompt
+#   4,"A modern kitchen with an island"
+#   7,"A living room with a sectional sofa"
+# This would produce output directories: scene_004/, scene_007/
+csv_path: null
+
+# List of scene prompts.
+prompts: [
+  "A bedroom with a bed, two nightstands, and a wardrobe in the corner of the room.",
+  "A living room with a two-seater sofa against the wall, a square rug in the middle in
+  front of the sofa, and two large plants on the floor near the sofa.",
+  "A classroom with six student desks, each with a chair. A teacher's desk sits at the
+  front near the chalkboard, which hangs on the wall."
+]
+
+# Number of parallel workers; 1 = sequential for debugging
+num_workers: 1
+
+# Whether to write/update the `outputs/<date>/latest-run` symlink.
+# Disabled by default to avoid races when multiple runs start concurrently.
+write_latest_run_symlink: false
+
+# Pipeline stage control
+# Stages run in order: floor_plan → furniture → wall_mounted → ceiling_mounted → manipuland → reward_spec → morphology_task
+# Set start_stage to resume from a specific stage (loads previous stage's state)
+# Set stop_stage to stop after a specific stage (saves state for later resumption)
+# Set skip_stages to skip specific stages (checkpoints are still saved for resumability)
+# Set resume_from_path to seed a new self-contained run from a previous experiment's output
+pipeline:
+  start_stage: "floor_plan"  # Options: "floor_plan", "furniture", "wall_mounted", "ceiling_mounted", "manipuland", "reward_spec", "morphology_task"
+  stop_stage: "morphology_task"  # Options: "floor_plan", "furniture", "wall_mounted", "ceiling_mounted", "manipuland", "reward_spec", "morphology_task"
+  skip_stages: []  # Stages to skip entirely
+  # Path to source experiment dir; copied into a new run before invalidating outputs from start_stage onward
+  resume_from_path: null
+  # Parallelize rooms within a house (mutually exclusive with num_workers > 1).
+  parallel_rooms: false
+  # Max concurrent rooms when parallel_rooms=true.
+  max_parallel_rooms: 1
+
+# Experiment tracking.
+tracking:
+  # Master switch. When false, every emit_* call is a no-op, no
+  # run_analysis files are written, and the Agents SDK Model is not
+  # wrapped (behaviour matches pre-refactor code on the hot path).
+  # Env var TASKSMITH_TRACKING_ENABLED=0 also turns this off.
+  enabled: true
+  # Sub-flag: wrap the Model returned by make_chat_completions_model so
+  # every Agents SDK API call emits a per-call usage record (tokens +
+  # images + tool names). Disable only if a future SDK upgrade breaks
+  # the wrapper; direct VLM tracking is unaffected.
+  agents_sdk_wrapping: true
+  # Whole-room multiview PNGs (same layout as furniture observe_scene) written
+  # under room_*/scene_renders/experiment_analysis/ for post-run inspection.
+  analysis_renders:
+    enabled: true
+  wandb:
+    # Stream live generation progress to W&B while the scene is running.
+    # Local run_analysis files are always written independently of this flag.
+    enabled: false
+    project: null
+    entity: null
+    mode: "online"  # "online", "offline", or "disabled"
+    poll_interval_s: 30.0
+    log_images: true
+    # Keep false for long runs so W&B/network issues do not kill generation.
+    fail_on_error: false
+
+# Geometry generation server settings
+geometry_generation_server:
+  host: "127.0.0.1"
+  port: 7005
+
+# HSSD retrieval server settings
+hssd_retrieval_server:
+  host: "127.0.0.1"
+  port: 7006
+
+# Articulated retrieval server settings
+articulated_retrieval_server:
+  host: "127.0.0.1"
+  port: 7007
+
+# Objaverse retrieval server settings
+objaverse_retrieval_server:
+  host: "127.0.0.1"
+  port: 7009
+
+# Materials retrieval server settings
+materials_retrieval_server:
+  host: "127.0.0.1"
+  port: 7008
+  data_path: "data/materials"
+  embeddings_path: "data/materials/embeddings"
+  use_top_k: 5
+
+# SceneEval export configuration.
+sceneeval_export:
+  enabled: true
+  asset_id_prefix: "tasksmith"
+
+# Physical feasibility post-processing configuration.
+# Two-stage process: projection (IK-based) → simulation (physics settling).
+projection:
+  enabled: true  # Master enable/disable flag.
+
+  # Threshold for DOF reduction optimization. When scene has more objects
+  # than this threshold, only colliding objects are made free in IK.
+  # Per-furniture projections have ~7 objects, final projection has 300+.
+  # Set to 0 to always use optimization, very high to disable.
+  large_scene_optimization_threshold: 100
+
+  # Minimum penetration depth (meters) to consider an object as colliding.
+  # Objects with penetration below this are treated as surface contacts.
+  # 0.001m = 1mm filters out resting objects while catching real penetrations.
+  collision_penetration_threshold_m: 0.001
+
+  furniture:
+    enabled: true             # Enable furniture post-processing.
+    xy_only: false            # XYZ to resolve floor collisions.
+    fix_rotation: true        # Fix rotations during projection.
+    influence_distance: 0.02  # 2cm collision influence.
+    solver_name: "snopt"      # NLP solver ("snopt" or "ipopt").
+    iteration_limit: 5000     # Max solver iterations.
+    time_limit_s: 360.0       # Max solver time (seconds).
+
+  final:
+    enabled: true             # Enable final scene post-processing.
+    xy_only: false            # XYZ (default for manipulands - allow vertical).
+    fix_rotation: true        # Fix rotations during projection.
+    influence_distance: 0.02
+    solver_name: "snopt"
+    iteration_limit: 10000
+    time_limit_s: 360.0       # Max solver time (seconds).
+
+  simulation:
+    enabled: true             # Enable forward simulation after projection.
+    simulation_time_s: 15.0    # Simulation duration (seconds).
+    time_step_s: 1.0e-3       # Physics time step (1ms).
+    timeout_s: 600.0          # Max wall-clock time (10 minutes).
+    save_html: false          # Save meshcat visualization HTML (for debugging).
+
+# Tabletop mode: generates a minimal flat floor (no walls/ceiling), places one
+# table via the furniture agent, then runs manipulands on that table.
+# Activate via experiment=tabletop or by setting tabletop_mode: true on the CLI.
+tabletop_mode: false
+tabletop_room_size: [4.0, 4.0]  # [width_m, length_m] of the open floor area
